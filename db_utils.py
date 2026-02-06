@@ -8,7 +8,7 @@ DB_PATH = Path("news_db.sqlite")
 
 def get_conn():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), timeout=30)
     conn.execute("PRAGMA journal_mode=WAL;")
     return conn
 
@@ -26,14 +26,14 @@ def init_db():
     conn.commit()
     conn.close()
 
-def make_hash(title, url):
+def make_hash(title: str, url: str) -> str:
     h = hashlib.sha256()
     h.update((title or "").strip().encode("utf-8"))
     h.update(b"||")
     h.update((url or "").strip().encode("utf-8"))
     return h.hexdigest()
 
-def already_posted(title, url):
+def already_posted(title: str, url: str) -> bool:
     init_db()
     h = make_hash(title, url)
     conn = get_conn()
@@ -42,7 +42,7 @@ def already_posted(title, url):
     conn.close()
     return found
 
-def mark_posted(title, url):
+def mark_posted(title: str, url: str):
     init_db()
     h = make_hash(title, url)
     now = datetime.datetime.utcnow().isoformat() + "Z"
