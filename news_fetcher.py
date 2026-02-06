@@ -3,7 +3,6 @@ import requests
 import feedparser
 from db_utils import already_posted, mark_posted
 
-# RSS sources (free)
 RSS_SOURCES = [
     "https://www.skysports.com/rss/12040",
     "https://www.espn.com/espn/rss/football/news",
@@ -11,7 +10,7 @@ RSS_SOURCES = [
     "https://feeds.bbci.co.uk/sport/football/rss.xml"
 ]
 
-def fetch_rss_headlines(limit=8):
+def fetch_rss_headlines(limit=12):
     items = []
     for url in RSS_SOURCES:
         try:
@@ -23,7 +22,6 @@ def fetch_rss_headlines(limit=8):
                 items.append({"title": title, "link": link, "source": url, "published": published})
         except Exception:
             continue
-    # dedupe by title
     seen = set()
     deduped = []
     for it in items:
@@ -43,7 +41,6 @@ def fetch_newsapi_headlines(api_key: str, query="football OR transfer OR transfe
         return []
 
 def get_top_news(newsapi_key=None, max_items=6):
-    # Try RSS first
     headlines = fetch_rss_headlines(limit=12)
     if len(headlines) < max_items and newsapi_key:
         more = fetch_newsapi_headlines(newsapi_key, limit=12)
@@ -52,7 +49,6 @@ def get_top_news(newsapi_key=None, max_items=6):
             if m["title"] not in titles:
                 headlines.append(m)
                 titles.add(m["title"])
-    # return top candidates
     return headlines[:max_items]
 
 def get_top_news_unique(newsapi_key=None, max_items=6):
