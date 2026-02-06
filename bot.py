@@ -24,7 +24,7 @@ CHANNEL_NAME = os.getenv("CHANNEL_NAME")
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # --- MEMORY (To prevent duplicate alerts) ---
-processed_alerts = set() # Stores IDs of matches/events we've already posted about
+processed_alerts = set() 
 
 # --- 1. EXPERT KNOWLEDGE BASE ---
 LEAGUES = {
@@ -36,7 +36,6 @@ LEAGUES = {
     'FL1': {'id': 2015, 'name': 'Ligue 1', 'tier': 2, 'emoji': '🇫🇷'},
 }
 
-# "Giants" List for Upset Detection
 GIANTS = [
     "Man City", "Liverpool", "Arsenal", "Real Madrid", "Barcelona", 
     "Bayern", "PSG", "Inter", "Juventus", "Milan"
@@ -61,17 +60,14 @@ def get_vibe():
     return random.choice(VIBES)
 
 async def fetch_verified_news():
-    """Fetches news + Checks for Transfer Market keywords"""
     articles = []
     transfer_keywords = ["here we go", "deal done", "medical", "agreed", "breaking"]
     
-    # 1. Fetch
     for feed_url in RSS_FEEDS:
         try:
             feed = feedparser.parse(feed_url)
             for entry in feed.entries[:10]:
                 title = entry.title
-                # Priority Check: Transfers
                 is_transfer = any(k in title.lower() for k in transfer_keywords)
                 if is_transfer:
                     title = f"🚨 TRANSFER ALERT: {title}" 
@@ -79,7 +75,6 @@ async def fetch_verified_news():
         except Exception as e:
             logging.error(f"Feed error: {e}")
 
-    # 2. Cross-Reference (Simple verify)
     verified_stories = []
     seen_indices = set()
     for i in range(len(articles)):
@@ -91,7 +86,6 @@ async def fetch_verified_news():
                 duplicates += 1
                 seen_indices.add(j)
         
-        # If duplicated OR it's a transfer alert, keep it
         if duplicates > 0 or "TRANSFER ALERT" in articles[i]:
             verified_stories.append(articles[i])
             seen_indices.add(i)
@@ -118,7 +112,6 @@ async def fetch_matches(status="SCHEDULED"):
                         'home': m['homeTeam']['name'],
                         'away': m['awayTeam']['name'],
                         'score': m['score']['fullTime'],
-                        'half_score': m['score']['halfTime'],
                         'status': m['status'],
                         'time': m['utcDate'],
                         'id': m['id']
@@ -140,7 +133,6 @@ async def post_daily_news(context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=CHANNEL_NAME, text=msg, parse_mode=ParseMode.MARKDOWN)
 
 async def post_live_scores_and_alerts(context: ContextTypes.DEFAULT_TYPE):
-    """Handles Scores, Halftime Polls, and Upset Alerts"""
     matches = await fetch_matches(status="FINISHED,IN_PLAY,PAUSED")
     if not matches: return
 
@@ -150,7 +142,7 @@ async def post_live_scores_and_alerts(context: ContextTypes.DEFAULT_TYPE):
         home_score = m['score']['home'] if m['score']['home'] is not None else 0
         away_score = m['score']['away'] if m['score']['away'] is not None else 0
         
-        # 1. UPSET ALERT (Big Team Losing)
+        # UPSET ALERT
         alert_id = f"upset_{m['id']}"
         if alert_id not in processed_alerts:
             losing_giant = None
@@ -162,7 +154,7 @@ async def post_live_scores_and_alerts(context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(chat_id=CHANNEL_NAME, text=upset_msg, parse_mode=ParseMode.MARKDOWN)
                 processed_alerts.add(alert_id)
 
-        # 2. HALFTIME POLL
+        # HALFTIME POLL
         ht_id = f"ht_{m['id']}"
         if m['status'] == 'PAUSED' and ht_id not in processed_alerts:
             poll_q = f"HT: {m['home']} {home_score}-{away_score} {m['away']}\nWho wins Full Time?"
@@ -171,8 +163,6 @@ async def post_live_scores_and_alerts(context: ContextTypes.DEFAULT_TYPE):
 
         msg += f"{m['emoji']} {m['home']} {home_score} - {away_score} {m['away']}\n"
 
-    # Only post scoreboard if it's a scheduled update (checking context)
-    # This function runs often for alerts, but we can limit full board posting
     if context.job and context.job.name == 'scoreboard':
         await context.bot.send_message(chat_id=CHANNEL_NAME, text=msg, parse_mode=ParseMode.MARKDOWN)
 
@@ -184,12 +174,10 @@ async def manage_polls(context: ContextTypes.DEFAULT_TYPE):
         match_time = datetime.fromisoformat(match['time'].replace('Z', '+00:00'))
         hours_until = (match_time - datetime.now(match_time.tzinfo)).total_seconds() / 3600
         
-        # Poll 3-6 hours before
         if 3 <= hours_until <= 6:
             q = f"{match['emoji']} {match['league']}: Who wins?\n{match['home']} vs {match['away']}"
             msg = await context.bot.send_poll(chat_id=CHANNEL_NAME, question=q, options=[match['home'], "Draw", match['away']])
             
-            # Close 10 mins before
             close_time = match_time - timedelta(minutes=10)
             context.job_queue.run_once(close_poll_job, when=close_time, data={'poll_id': msg.poll.id, 'match': f"{match['home']} vs {match['away']}"})
 
@@ -204,20 +192,13 @@ if __name__ == '__main__':
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     scheduler = AsyncIOScheduler()
     
-    # News (8:30 AM & PM)
     scheduler.add_job(post_daily_news, CronTrigger(hour=8, minute=30))
     scheduler.add_job(post_daily_news, CronTrigger(hour=20, minute=30))
-    
-    # Live Checks (Scores/Alerts) every 10 mins
     scheduler.add_job(post_live_scores_and_alerts, CronTrigger(minute='*/10'))
-    
-    # Full Scoreboard post every 2 hours
     scheduler.add_job(post_live_scores_and_alerts, CronTrigger(minute=0, hour='12-23/2'), name='scoreboard')
-    
-    # Pre-match Polls
     scheduler.add_job(manage_polls, CronTrigger(minute=15, hour='*/4'))
     
     application.job_queue.scheduler = scheduler
     scheduler.start()
-    print("GoalFlowPulse 2.0 (Smart Alert Edition) is LIVE! 🚀")
+    print("GoalFlowPulse Bot is LIVE! 🚀")
     application.run_polling()
