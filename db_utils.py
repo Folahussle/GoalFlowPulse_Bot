@@ -23,6 +23,18 @@ def init_db():
         posted_at TEXT
     )
     """)
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS posted_match_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        match_id INTEGER,
+        event_type TEXT, -- 'HT' or 'FT'
+        competition TEXT,
+        home_team TEXT,
+        away_team TEXT,
+        posted_at TEXT,
+        UNIQUE(match_id, event_type)
+    )
+    """)
     conn.commit()
     conn.close()
 
@@ -51,6 +63,27 @@ def mark_posted(title: str, url: str):
         conn.execute(
             "INSERT OR IGNORE INTO posted_news (hash, title, url, posted_at) VALUES (?, ?, ?, ?)",
             (h, title, url, now)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+def already_posted_event(match_id: int, event_type: str) -> bool:
+    init_db()
+    conn = get_conn()
+    cur = conn.execute("SELECT 1 FROM posted_match_events WHERE match_id = ? AND event_type = ? LIMIT 1", (match_id, event_type))
+    found = cur.fetchone() is not None
+    conn.close()
+    return found
+
+def mark_event_posted(match_id: int, event_type: str, competition: str, home_team: str, away_team: str):
+    init_db()
+    now = datetime.datetime.utcnow().isoformat() + "Z"
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO posted_match_events (match_id, event_type, competition, home_team, away_team, posted_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (match_id, event_type, competition, home_team, away_team, now)
         )
         conn.commit()
     finally:
