@@ -29,7 +29,7 @@ processed_alerts = set()
 # --- 1. EXPERT KNOWLEDGE BASE ---
 LEAGUES = {
     'CL': {'id': 2001, 'name': 'Champions League', 'tier': 1, 'emoji': '🏆'},
-    'PL': {'id': 2021, 'name': 'Premier League', 'tier': 2, 'emoji': '🏴󠁧󠁢󠁥󠁮󠁧󠁿'},
+    'PL': {'id': 2021, 'name': 'Premier League', 'tier': 2, 'emoji': '🦁'},
     'PD': {'id': 2014, 'name': 'La Liga', 'tier': 2, 'emoji': '🇪🇸'},
     'SA': {'id': 2019, 'name': 'Serie A', 'tier': 2, 'emoji': '🇮🇹'},
     'BL1': {'id': 2002, 'name': 'Bundesliga', 'tier': 2, 'emoji': '🇩🇪'},
