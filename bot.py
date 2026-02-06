@@ -22,7 +22,7 @@ import feedparser
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '8542955893:AAHfwn30QcJjHpJ_Ck-gZCYR9M7BzS7BK94')
 FOOTBALL_API_KEY = os.getenv('FOOTBALL_API_KEY', '773af02a0f5b4096908a2caa5d225dae')
 CHANNEL_NAME = os.getenv('CHANNEL_NAME', '@GoalFlowPulse')
-NEWS_API_KEY = os.getenv('NEWS_API_KEY', '')  # Optional: Get free key from newsapi.org
+NEWS_API_KEY = os.getenv('NEWS_API_KEY', '20ac3800726c479498663361b0c9a314')  # Optional: Get free key from newsapi.org
 
 # Nigerian vibe greetings and phrases
 NIGERIAN_VIBES = [
@@ -33,7 +33,8 @@ NIGERIAN_VIBES = [
     "✨ Na wa o! ",
     "🚀 Make we yarn! ",
     "💪 E dey pepper dem! ",
-    "🌟 Abeg check am! "
+    "🌟 Abeg check am! ",
+    "😂 Bookies how market?! "
 ]
 
 # Major leagues for our bot
@@ -51,27 +52,27 @@ NEWS_SOURCES = {
     'bbc_sport': {
         'name': 'BBC Sport',
         'rss': 'http://feeds.bbci.co.uk/sport/football/rss.xml',
-        'emoji': '🇬🇧'
+        'emoji': '⬛'
     },
     'espn': {
         'name': 'ESPN FC',
         'rss': 'https://www.espn.com/espn/rss/soccer/news',
-        'emoji': '🏆'
+        'emoji': '🎙️'
     },
     'sky_sports': {
         'name': 'Sky Sports',
         'rss': 'https://www.skysports.com/rss/12040',
-        'emoji': '📺'
+        'emoji': '🌤️'
     },
     'goal': {
         'name': 'Goal.com',
         'url': 'https://www.goal.com/en/news',
-        'emoji': '⚽'
+        'emoji': '🥅'
     },
     'guardian': {
         'name': 'The Guardian',
         'rss': 'https://www.theguardian.com/football/rss',
-        'emoji': '📰'
+        'emoji': '🛡️'
     }
 }
 
