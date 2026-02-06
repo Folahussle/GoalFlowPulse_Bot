@@ -2,8 +2,9 @@
 import os
 import requests
 import time
-from utils import format_score_message, nigeria_vibe, PRIORITY_CODES, PRIORITY_NAMES
+from utils import format_ht_message, format_ft_message, PRIORITY_CODES, PRIORITY_NAMES
 from news_fetcher import get_top_news_unique, mark_news_as_posted
+from db_utils import already_posted_event, mark_event_posted, init_db
 
 FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -24,14 +25,14 @@ def send_telegram(text: str, parse_mode: str = None) -> bool:
         return False
 
 def post_live_scores(max_posts=10):
+    init_db()
     url = "https://api.football-data.org/v4/matches"
     headers = {"X-Auth-Token": FOOTBALL_API_KEY}
     try:
-        r = requests.get(url, headers=headers, timeout=10)
+        r = requests.get(url, headers=headers, timeout=15)
         data = r.json()
         matches = data.get("matches", [])
 
-        # Helper: determine priority score (lower = higher priority)
         def priority_score(match):
             comp = match.get("competition", {})
             code = (comp.get("code") or "").upper()
@@ -48,19 +49,16 @@ def post_live_scores(max_posts=10):
                 return 3
             return 10
 
-        live_statuses = {"IN_PLAY", "PAUSED"}
-        finished_statuses = {"FINISHED"}
-        relevant = [m for m in matches if m.get("status") in (live_statuses | finished_statuses)]
+        # statuses to consider: PAUSED -> halftime, FINISHED -> full-time
+        relevant = [m for m in matches if m.get("status") in ("PAUSED", "FINISHED")]
 
         def sort_key(m):
             status = m.get("status", "")
             status_rank = 3
-            if status == "IN_PLAY":
+            if status == "PAUSED":
                 status_rank = 0
-            elif status == "PAUSED":
-                status_rank = 1
             elif status == "FINISHED":
-                status_rank = 2
+                status_rank = 1
             utc_kickoff = m.get("utcDate") or ""
             return (priority_score(m), status_rank, utc_kickoff)
 
@@ -70,23 +68,53 @@ def post_live_scores(max_posts=10):
         for m in relevant_sorted:
             if posted >= max_posts:
                 break
-            comp = m.get("competition", {}).get("name", "Unknown Competition")
-            text = format_score_message(m, CHANNEL_ID)
-            text = f"{comp}\n\n{text}"
-            send_telegram(text)
-            posted += 1
-            time.sleep(1)
+            match_id = m.get("id")
+            status = m.get("status")
+            comp_name = m.get("competition", {}).get("name", "Competition")
+            home = m.get("homeTeam", {}).get("name", "Home")
+            away = m.get("awayTeam", {}).get("name", "Away")
+            full = m.get("score", {}).get("fullTime", {}) or {}
+            home_score = full.get("home")
+            away_score = full.get("away")
+            # For PAUSED, sometimes fullTime is null; try halfTime or live fields
+            if status == "PAUSED":
+                half = m.get("score", {}).get("halfTime", {}) or {}
+                home_score = half.get("home") if half.get("home") is not None else home_score
+                away_score = half.get("away") if half.get("away") is not None else away_score
+                event_type = "HT"
+                if already_posted_event(match_id, event_type):
+                    continue
+                text = format_ht_message(comp_name, home, away, home_score, away_score)
+                ok = send_telegram(text)
+                if ok:
+                    mark_event_posted(match_id, event_type, comp_name, home, away)
+                    posted += 1
+                    time.sleep(1)
+            elif status == "FINISHED":
+                # finished: use fullTime scores
+                event_type = "FT"
+                if already_posted_event(match_id, event_type):
+                    continue
+                # ensure we have final scores
+                home_score = full.get("home") if full.get("home") is not None else home_score
+                away_score = full.get("away") if full.get("away") is not None else away_score
+                text = format_ft_message(comp_name, home, away, home_score, away_score)
+                ok = send_telegram(text)
+                if ok:
+                    mark_event_posted(match_id, event_type, comp_name, home, away)
+                    posted += 1
+                    time.sleep(1)
 
         if posted == 0:
-            send_telegram(nigeria_vibe("No live matches right now among the priority competitions."))
+            send_telegram("Omo! No new halftime or full-time events for priority competitions right now.")
     except Exception as e:
         print("Error fetching live scores:", e)
-        send_telegram(nigeria_vibe("Error fetching live scores. I go check and come back."))
+        send_telegram("Omo! Error fetching live scores. I go check and come back.")
 
 def post_daily_news():
     headlines = get_top_news_unique(NEWSAPI_KEY, max_items=6)
     if not headlines:
-        send_telegram(nigeria_vibe("No new news right now. I no go repost old one."))
+        send_telegram("Omo! No new news right now. I no go repost old one.")
         return
     text_lines = ["🔥 Top Football News & Transfer Rumours 🔥\n"]
     for h in headlines:
@@ -112,12 +140,11 @@ def handle_command(command: str):
         lines.append("Most domestic leagues use promotion/relegation; bottom teams drop to lower divisions.")
         send_telegram("\n".join(lines))
     else:
-        send_telegram(nigeria_vibe("I no sabi that command. Try: livescores, news, leagues"))
+        send_telegram("Omo! I no sabi that command. Try: livescores, news, leagues")
 
 if __name__ == "__main__":
     cmd = os.getenv("COMMAND")
     if cmd:
         handle_command(cmd)
     else:
-        # Default: post live scores (used by 15-min scheduler)
         post_live_scores()
