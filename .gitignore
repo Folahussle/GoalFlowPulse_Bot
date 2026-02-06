@@ -1,43 +1,36 @@
-# Environment variables (NEVER commit these!)
-.env
-
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
-venv/
-ENV/
+*.pyo
+*.pyd
 env/
+venv/
+.venv/
+pip-wheel-metadata/
+*.egg-info/
 
-# IDE
+# IDEs / editors
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
+*.sublime-project
+*.sublime-workspace
 
-# OS
-.DS_Store
-Thumbs.db
+# Environment / secrets
+.env
+.env.* 
+secrets.json
+
+# SQLite DB used for dedupe/cache
+news_db.sqlite
+*.sqlite
+*.db
 
 # Logs
 *.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# GitHub Actions cache (optional local)
+.cache/
