@@ -12,8 +12,6 @@ pip-wheel-metadata/
 # IDEs / editors
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
 
 # Environment / secrets
 .env
@@ -31,6 +29,3 @@ news_db.sqlite
 # System files
 .DS_Store
 Thumbs.db
-
-# GitHub Actions cache (optional local)
-.cache/
