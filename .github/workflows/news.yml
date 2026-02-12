@@ -42,6 +42,13 @@ jobs:
           COMMAND: news
         run: |
           python bot.py
+          - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add matches.db
+          git commit -m "Update match database [skip ci]" || echo "No changes to commit"
+          git push
 
       - name: Save DB cache
         uses: actions/cache@v4
